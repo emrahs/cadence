@@ -93,11 +93,17 @@ func (c *Persistence) Validate() error {
 		if ds.Cassandra != nil && ds.NoSQL != nil && ds.Cassandra != ds.NoSQL {
 			return fmt.Errorf("persistence config: datastore %v: only one of Cassandra or NoSQL can be specified", st)
 		}
-		if ds.SQL == nil && ds.NoSQL == nil {
-			return fmt.Errorf("persistence config: datastore %v: must provide config for one of SQL or NoSQL stores", st)
+		if ds.SQL == nil && ds.NoSQL == nil && ds.ShardedNoSQL == nil {
+			return fmt.Errorf("persistence config: datastore %v: must provide config for one of SQL, NoSQL or ShardedNoSQL stores", st)
 		}
-		if ds.SQL != nil && ds.NoSQL != nil {
-			return fmt.Errorf("persistence config: datastore %v: only one of SQL or NoSQL can be specified", st)
+		if ds.SQL != nil && (ds.NoSQL != nil || ds.ShardedNoSQL != nil) {
+			return fmt.Errorf("persistence config: datastore %v: only one of SQL, NoSQL, or ShardedNoSQL can be specified", st)
+		}
+		if ds.NoSQL != nil && (ds.SQL != nil || ds.ShardedNoSQL != nil) {
+			return fmt.Errorf("persistence config: datastore %v: only one of SQL, NoSQL, or ShardedNoSQL can be specified", st)
+		}
+		if ds.ShardedNoSQL != nil && (ds.SQL != nil || ds.NoSQL != nil) {
+			return fmt.Errorf("persistence config: datastore %v: only one of SQL, NoSQL, or ShardedNoSQL can be specified", st)
 		}
 		if ds.SQL != nil {
 			if ds.SQL.UseMultipleDatabases {
@@ -135,6 +141,12 @@ func (c *Persistence) Validate() error {
 					return fmt.Errorf("sql persistence config: connectAddr can not be empty")
 				}
 			}
+		} else if ds.ShardedNoSQL != nil {
+			// TODO: validate config
+			// 1. Ensure shard names are not redundant
+			// 2. Ensure historyShardRanges cover all numHistoryShards
+			// 3. Ensure nosqlplugin
+			// 4. Connect to db and ensure the metadata in the db is in line with the configuration
 		}
 	}
 

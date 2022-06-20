@@ -412,6 +412,11 @@ func (f *factoryImpl) init(clusterName string, limiters map[string]quotas.Limite
 	switch {
 	case defaultCfg.NoSQL != nil:
 		defaultDataStore.factory = nosql.NewFactory(*defaultCfg.NoSQL, clusterName, f.logger)
+	case defaultCfg.ShardedNoSQL != nil:
+		// TODO: don't forget to handle this
+		metadataShardName := defaultCfg.ShardedNoSQL.ShardingPolicy.MetadataShard
+		metadataShardConn := defaultCfg.ShardedNoSQL.Connections[metadataShardName]
+		defaultDataStore.factory = nosql.NewFactory(*metadataShardConn.NoSQLPlugin, clusterName, f.logger)
 	case defaultCfg.SQL != nil:
 		if defaultCfg.SQL.EncodingType == "" {
 			defaultCfg.SQL.EncodingType = string(common.EncodingTypeThriftRW)

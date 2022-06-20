@@ -190,6 +190,8 @@ type (
 		SQL *SQL `yaml:"sql"`
 		// NoSQL contains the config for a NoSQL based datastore
 		NoSQL *NoSQL `yaml:"nosql"`
+		// ShardedNoSQL contains the config for a collection of NoSQL datastores that are used as a single datastore
+		ShardedNoSQL *ShardedNoSQL `yaml:"shardedNosql"`
 		// ElasticSearch contains the config for a ElasticSearch datastore
 		ElasticSearch *ElasticSearchConfig `yaml:"elasticsearch"`
 	}
@@ -229,6 +231,41 @@ type (
 		// Otherwise please add new fields to the struct for better documentation
 		// If being used in any database, update this comment here to make it clear
 		ConnectAttributes map[string]string `yaml:"connectAttributes"`
+	}
+
+	// ShardedNoSQL contains configuration to connect to a set of NoSQL Database clusters in a sharded manner
+	ShardedNoSQL struct {
+		// ShardingPolicy is the configuration for the sharding strategy used
+		ShardingPolicy ShardingPolicy `yaml:"shardingPolicy"`
+		// Connections is the collection of NoSQL DB plugins that are used to connect to the shard
+		Connections map[string]DBShardConnection `yaml:"connections"`
+	}
+
+	// ShardingPolicy contains configuration for physical DB sharding
+	ShardingPolicy struct {
+		// MetadataShard is the DB shard where the non-sharded tables for cluster metadata is stored
+		MetadataShard string `yaml:"metadataShard"`
+		// HistoryShardMapping defines the ranges of history shards stored by each DB shard
+		HistoryShardMapping map[string]HistoryShardRangeAllocation `yaml:"historyShardMapping"`
+	}
+
+	HistoryShardRangeAllocation struct {
+		// OwnedRanges is a list of history shard ranges
+		OwnedRanges []HistoryShardRange `yaml:"ownedRanges"`
+	}
+
+	// HistoryShardRange contains configuration for one NoSQL DB Shard
+	HistoryShardRange struct {
+		// Start defines the inclusive lower bound for the history shard range
+		Start int `yaml:"start"`
+		// End defines the exclusive upper bound for the history shard range
+		End int `yaml:"end"`
+	}
+
+	// DBShardConnection contains configuration for one NoSQL DB Shard
+	DBShardConnection struct {
+		// NoSQLPlugin is the NoSQL plugin used for connecting to the DB shard
+		NoSQLPlugin *NoSQL `yaml:"nosqlPlugin"`
 	}
 
 	// SQL is the configuration for connecting to a SQL backed datastore
