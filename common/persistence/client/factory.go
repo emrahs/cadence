@@ -411,12 +411,10 @@ func (f *factoryImpl) init(clusterName string, limiters map[string]quotas.Limite
 	defaultDataStore := Datastore{ratelimit: limiters[f.config.DefaultStore]}
 	switch {
 	case defaultCfg.NoSQL != nil:
-		defaultDataStore.factory = nosql.NewFactory(*defaultCfg.NoSQL, clusterName, f.logger)
+		shardedNoSQLConfig := defaultCfg.NoSQL.ConvertToShardedNoSQLConfig()
+		defaultDataStore.factory = nosql.NewFactory(*shardedNoSQLConfig, clusterName, f.logger)
 	case defaultCfg.ShardedNoSQL != nil:
-		// TODO: don't forget to handle this
-		metadataShardName := defaultCfg.ShardedNoSQL.ShardingPolicy.MetadataShard
-		metadataShardConn := defaultCfg.ShardedNoSQL.Connections[metadataShardName]
-		defaultDataStore.factory = nosql.NewFactory(*metadataShardConn.NoSQLPlugin, clusterName, f.logger)
+		defaultDataStore.factory = nosql.NewFactory(*defaultCfg.ShardedNoSQL, clusterName, f.logger)
 	case defaultCfg.SQL != nil:
 		if defaultCfg.SQL.EncodingType == "" {
 			defaultCfg.SQL.EncodingType = string(common.EncodingTypeThriftRW)
@@ -459,7 +457,8 @@ func (f *factoryImpl) init(clusterName string, limiters map[string]quotas.Limite
 	visibilityDataStore := Datastore{ratelimit: limiters[f.config.VisibilityStore]}
 	switch {
 	case visibilityCfg.NoSQL != nil:
-		visibilityDataStore.factory = nosql.NewFactory(*visibilityCfg.NoSQL, clusterName, f.logger)
+		shardedNoSQLConfig := visibilityCfg.NoSQL.ConvertToShardedNoSQLConfig()
+		visibilityDataStore.factory = nosql.NewFactory(*shardedNoSQLConfig, clusterName, f.logger)
 	case visibilityCfg.SQL != nil:
 		var decodingTypes []common.EncodingType
 		for _, dt := range visibilityCfg.SQL.DecodingTypes {

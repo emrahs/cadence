@@ -42,20 +42,16 @@ type (
 
 // newNoSQLDomainStore is used to create an instance of DomainStore implementation
 func newNoSQLDomainStore(
-	cfg config.NoSQL,
+	cfg config.ShardedNoSQL,
 	currentClusterName string,
 	logger log.Logger,
 ) (p.DomainStore, error) {
-	db, err := NewNoSQLDB(&cfg, logger)
+	shardedStore, err := NewShardedNosqlStore(logger, cfg)
 	if err != nil {
 		return nil, err
 	}
-
 	return &nosqlDomainStore{
-		nosqlStore: nosqlStore{
-			db:     db,
-			logger: logger,
-		},
+		nosqlStore:         shardedStore.GetMetadataShard(),
 		currentClusterName: currentClusterName,
 	}, nil
 }

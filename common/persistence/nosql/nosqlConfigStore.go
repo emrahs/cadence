@@ -37,19 +37,15 @@ type (
 )
 
 func NewNoSQLConfigStore(
-	cfg config.NoSQL,
+	cfg config.ShardedNoSQL,
 	logger log.Logger,
 ) (persistence.ConfigStore, error) {
-	db, err := NewNoSQLDB(&cfg, logger)
+	shardedStore, err := NewShardedNosqlStore(logger, cfg)
 	if err != nil {
 		return nil, err
 	}
-
 	return &nosqlConfigStore{
-		nosqlStore: nosqlStore{
-			db:     db,
-			logger: logger,
-		},
+		nosqlStore: shardedStore.GetMetadataShard(),
 	}, nil
 }
 

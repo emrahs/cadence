@@ -69,7 +69,7 @@ func verifyCompatibleVersion(
 	if ds.NoSQL != nil {
 		return verifyPluginVersion(ds.NoSQL, expectedCassandraVersion)
 	}
-
+	// TODO: This should be done lazily so that service can start without crashing if just one Cassandra cluster is down
 	if ds.ShardedNoSQL != nil {
 		for shardName, connection := range ds.ShardedNoSQL.Connections {
 			err := verifyPluginVersion(connection.NoSQLPlugin, expectedCassandraVersion)

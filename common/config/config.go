@@ -235,18 +235,20 @@ type (
 
 	// ShardedNoSQL contains configuration to connect to a set of NoSQL Database clusters in a sharded manner
 	ShardedNoSQL struct {
+		// MetadataShard is the DB shard where the non-sharded tables for cluster metadata is stored
+		MetadataShard string `yaml:"metadataShard"`
 		// ShardingPolicy is the configuration for the sharding strategy used
-		ShardingPolicy ShardingPolicy `yaml:"shardingPolicy"`
+		ShardingPolicy *ShardingPolicy `yaml:"shardingPolicy"`
 		// Connections is the collection of NoSQL DB plugins that are used to connect to the shard
 		Connections map[string]DBShardConnection `yaml:"connections"`
 	}
 
 	// ShardingPolicy contains configuration for physical DB sharding
 	ShardingPolicy struct {
-		// MetadataShard is the DB shard where the non-sharded tables for cluster metadata is stored
-		MetadataShard string `yaml:"metadataShard"`
 		// HistoryShardMapping defines the ranges of history shards stored by each DB shard
 		HistoryShardMapping map[string]HistoryShardRangeAllocation `yaml:"historyShardMapping"`
+		// TaskListHashing defines the parameters needed for shard ownership calculation based on hashing
+		TaskListHashing TasklistHashing `yaml:"taskListHashing"`
 	}
 
 	HistoryShardRangeAllocation struct {
@@ -260,6 +262,11 @@ type (
 		Start int `yaml:"start"`
 		// End defines the exclusive upper bound for the history shard range
 		End int `yaml:"end"`
+	}
+
+	TasklistHashing struct {
+		// ShardOrder defines the order of shards to be used when hashing tasklists to shards
+		ShardOrder []string `yaml:"shardOrder"`
 	}
 
 	// DBShardConnection contains configuration for one NoSQL DB Shard
@@ -545,6 +552,23 @@ type (
 		URI string `yaml:"URI"`
 	}
 )
+
+const (
+	// NonShardedStoreName is the shard name used for singular (non-sharded) stores
+	NonShardedStoreName = "NonShardedStore"
+)
+
+func (n *NoSQL) ConvertToShardedNoSQLConfig() *ShardedNoSQL {
+	connections := make(map[string]DBShardConnection)
+	connections[NonShardedStoreName] = DBShardConnection{
+		NoSQLPlugin: n,
+	}
+
+	// TODO: fill this out to make it fully backward compatible
+	return &ShardedNoSQL{
+		Connections: connections,
+	}
+}
 
 // ValidateAndFillDefaults validates this config and fills default values if needed
 func (c *Config) ValidateAndFillDefaults() error {

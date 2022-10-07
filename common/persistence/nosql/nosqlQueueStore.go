@@ -43,21 +43,17 @@ type (
 )
 
 func newNoSQLQueueStore(
-	cfg config.NoSQL,
+	cfg config.ShardedNoSQL,
 	logger log.Logger,
 	queueType persistence.QueueType,
 ) (persistence.Queue, error) {
-	db, err := NewNoSQLDB(&cfg, logger)
+	shardedStore, err := NewShardedNosqlStore(logger, cfg)
 	if err != nil {
 		return nil, err
 	}
-
 	queue := &nosqlQueueStore{
-		nosqlStore: nosqlStore{
-			db:     db,
-			logger: logger,
-		},
-		queueType: queueType,
+		nosqlStore: shardedStore.GetMetadataShard(),
+		queueType:  queueType,
 	}
 	if err := queue.createQueueMetadataEntryIfNotExist(); err != nil {
 		return nil, fmt.Errorf("failed to check and create queue metadata entry: %v", err)
