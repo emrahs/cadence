@@ -45,7 +45,7 @@ func NewNoSQLConfigStore(
 		return nil, err
 	}
 	return &nosqlConfigStore{
-		nosqlStore: shardedStore.GetMetadataShard(),
+		nosqlStore: shardedStore.GetDefaultShard(),
 	}, nil
 }
 

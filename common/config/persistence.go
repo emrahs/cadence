@@ -141,12 +141,50 @@ func (c *Persistence) Validate() error {
 					return fmt.Errorf("sql persistence config: connectAddr can not be empty")
 				}
 			}
-		} else if ds.ShardedNoSQL != nil {
-			// TODO: validate config
-			// 1. Ensure shard names are not redundant
-			// 2. Ensure historyShardRanges cover all numHistoryShards
-			// 3. Ensure nosqlplugin
-			// 4. Connect to db and ensure the metadata in the db is in line with the configuration
+		}
+		if ds.ShardedNoSQL != nil {
+			cfg := ds.ShardedNoSQL
+			connections := cfg.Connections
+
+			// validate default shard
+			if cfg.DefaultShard == "" {
+				return fmt.Errorf("ShardedNosql config: defaultShard can not be empty")
+			}
+			if _, found := connections[cfg.DefaultShard]; !found {
+				return fmt.Errorf(
+					"ShardedNosql config: defaultShard (%v) is not defined in connections list", cfg.DefaultShard)
+			}
+
+			// validate history sharding
+			historyShardMapping := cfg.ShardingPolicy.HistoryShardMapping
+			currentShardId := -1
+			for _, shardRange := range historyShardMapping {
+				if _, found := connections[shardRange.Shard]; !found {
+					return fmt.Errorf("ShardedNosql config: Unknown history shard name: %v", shardRange.Shard)
+				}
+				if shardRange.Start != currentShardId+1 {
+					return fmt.Errorf("ShardedNosql config: Non-continuous history shard range %v (%v) found after %v",
+						shardRange.Start,
+						shardRange.Shard,
+						currentShardId,
+					)
+				}
+				currentShardId = shardRange.End
+			}
+			if currentShardId != c.NumHistoryShards-1 {
+				return fmt.Errorf("ShardedNosql config: Last history shard is %v while the max is %v.",
+					currentShardId,
+					c.NumHistoryShards-1,
+				)
+			}
+
+			// validate tasklist sharding
+			tasklistShards := cfg.ShardingPolicy.TaskListHashing.ShardOrder
+			for _, shardName := range tasklistShards {
+				if _, found := connections[shardName]; !found {
+					return fmt.Errorf("ShardedNosql config: Unknown tasklist shard name: %v", shardName)
+				}
+			}
 		}
 	}
 

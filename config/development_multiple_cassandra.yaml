@@ -5,21 +5,18 @@ persistence:
   datastores:
     cass-default:
       shardedNosql:
-        metadataShard: nosqlDbShard1
+        defaultShard: nosqlDbShard1
         shardingPolicy:
           historyShardMapping:
-            nosqlDbShard1:
-              ownedRanges:
-                - start: 0
-                  end: 0
-                - start: 3
-                  end: 3
-            nosqlDbShard2:
-              ownedRanges:
-                - start: 1
-                  end: 1
-                - start: 2
-                  end: 2
+            - start: 0
+              end: 0
+              shard: nosqlDbShard1
+            - start: 1
+              end: 2
+              shard: nosqlDbShard2
+            - start: 3
+              end: 3
+              shard: nosqlDbShard1
           taskListHashing:
             shardOrder:
               - nosqlDbShard1

@@ -51,7 +51,7 @@ func newNoSQLDomainStore(
 		return nil, err
 	}
 	return &nosqlDomainStore{
-		nosqlStore:         shardedStore.GetMetadataShard(),
+		nosqlStore:         shardedStore.GetDefaultShard(),
 		currentClusterName: currentClusterName,
 	}, nil
 }

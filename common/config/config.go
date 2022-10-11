@@ -235,25 +235,22 @@ type (
 
 	// ShardedNoSQL contains configuration to connect to a set of NoSQL Database clusters in a sharded manner
 	ShardedNoSQL struct {
-		// MetadataShard is the DB shard where the non-sharded tables for cluster metadata is stored
-		MetadataShard string `yaml:"metadataShard"`
+		// DefaultShard is the DB shard where the non-sharded tables (ie. cluster metadata) are stored
+		DefaultShard string `yaml:"defaultShard"`
 		// ShardingPolicy is the configuration for the sharding strategy used
-		ShardingPolicy *ShardingPolicy `yaml:"shardingPolicy"`
+		ShardingPolicy ShardingPolicy `yaml:"shardingPolicy"`
 		// Connections is the collection of NoSQL DB plugins that are used to connect to the shard
 		Connections map[string]DBShardConnection `yaml:"connections"`
 	}
 
 	// ShardingPolicy contains configuration for physical DB sharding
 	ShardingPolicy struct {
-		// HistoryShardMapping defines the ranges of history shards stored by each DB shard
-		HistoryShardMapping map[string]HistoryShardRangeAllocation `yaml:"historyShardMapping"`
+		// HistoryShardMapping defines the ranges of history shards stored by each DB shard. Ranges listed here *MUST*
+		// be continuous and non-overlapping, such that the first range in the list starts from Shard 0, each following
+		// range starts with <prevRange.End> + 1, and the last range ends with <NumHistoryHosts>-1.
+		HistoryShardMapping []HistoryShardRange `yaml:"historyShardMapping"`
 		// TaskListHashing defines the parameters needed for shard ownership calculation based on hashing
 		TaskListHashing TasklistHashing `yaml:"taskListHashing"`
-	}
-
-	HistoryShardRangeAllocation struct {
-		// OwnedRanges is a list of history shard ranges
-		OwnedRanges []HistoryShardRange `yaml:"ownedRanges"`
 	}
 
 	// HistoryShardRange contains configuration for one NoSQL DB Shard
@@ -262,6 +259,8 @@ type (
 		Start int `yaml:"start"`
 		// End defines the exclusive upper bound for the history shard range
 		End int `yaml:"end"`
+		// Shard defines the shard that owns this range
+		Shard string `yaml:"shard"`
 	}
 
 	TasklistHashing struct {
@@ -566,7 +565,8 @@ func (n *NoSQL) ConvertToShardedNoSQLConfig() *ShardedNoSQL {
 
 	// TODO: fill this out to make it fully backward compatible
 	return &ShardedNoSQL{
-		Connections: connections,
+		DefaultShard: NonShardedStoreName,
+		Connections:  connections,
 	}
 }
 

@@ -1,12 +1,32 @@
+// Copyright (c) 2022 Uber Technologies, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 package nosql
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/uber/cadence/common/config"
 	"github.com/uber/cadence/common/log"
 	"github.com/uber/cadence/common/log/tag"
-	"github.com/uber/cadence/common/types"
-	"sync"
 )
 
 type (
@@ -17,20 +37,14 @@ type (
 		logger log.Logger
 		config config.ShardedNoSQL
 
-		isSharded       bool
 		connectedShards map[string]nosqlStore
-		metadataShard   nosqlStore
+		defaultShard    nosqlStore
 		shardingPolicy  shardingPolicy
-	}
-
-	// UnknownShardError represents invalid shard
-	UnknownShardError struct {
-		Message string
 	}
 )
 
 func NewShardedNosqlStore(logger log.Logger, cfg config.ShardedNoSQL) (*shardedNosqlStore, error) {
-	// TODO: validate config
+	//TODO: validate config
 	// - has sharding policy
 	// - has at least one connection
 	// - metadatashard name is valid
@@ -41,33 +55,21 @@ func NewShardedNosqlStore(logger log.Logger, cfg config.ShardedNoSQL) (*shardedN
 		config: cfg,
 	}
 
-	if cfg.ShardingPolicy != nil {
-		sn.isSharded = true
-		sp, err := NewShardingPolicy(logger, cfg.MetadataShard, cfg.ShardingPolicy)
-		if err != nil {
-			return nil, err
-		}
-		sn.shardingPolicy = sp
-	}
-
-	// set isSharded
-	// set metadata shard
-	var mdShardName string
-	if cfg.ShardingPolicy == nil {
-		mdShardName = config.NonShardedStoreName
-	} else {
-		mdShardName = cfg.MetadataShard
-		sn.isSharded = true
-	}
-
-	s, err := sn.connectToShard(cfg.Connections[mdShardName].NoSQLPlugin, mdShardName)
+	// Connect to the default shard
+	defaultShardName := cfg.DefaultShard
+	store, err := sn.connectToShard(cfg.Connections[defaultShardName].NoSQLPlugin, defaultShardName)
 	if err != nil {
 		return nil, err
 	}
-
-	sn.metadataShard = *s
+	sn.defaultShard = *store
 	sn.connectedShards = map[string]nosqlStore{
-		mdShardName: sn.metadataShard,
+		defaultShardName: sn.defaultShard,
+	}
+
+	// Parse & validate the sharding policy
+	sn.shardingPolicy, err = NewShardingPolicy(logger, cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	return &sn, nil
@@ -83,13 +85,13 @@ func (sn *shardedNosqlStore) GetStoreShardByTaskList(domainId string, taskListNa
 	return sn.getShard(shardName)
 }
 
-func (sn *shardedNosqlStore) GetMetadataShard() nosqlStore {
-	// TODO: ensure metadata shard is set
-	return sn.metadataShard
+func (sn *shardedNosqlStore) GetDefaultShard() nosqlStore {
+	// TODO: ensure default shard is set
+	return sn.defaultShard
 }
 
 func (sn *shardedNosqlStore) Close() {
-	sn.metadataShard.Close()
+	sn.defaultShard.Close()
 
 	for name, shard := range sn.connectedShards {
 		sn.logger.Warn("Closing store shard", tag.StoreShard(name))
@@ -112,7 +114,7 @@ func (sn *shardedNosqlStore) getShard(shardName string) (*nosqlStore, error) {
 
 	cfg, ok := sn.config.Connections[shardName]
 	if !ok {
-		return nil, &types.InternalServiceError{
+		return nil, &ShardingError{
 			Message: fmt.Sprintf("Unknown db shard name: %v", shardName),
 		}
 	}

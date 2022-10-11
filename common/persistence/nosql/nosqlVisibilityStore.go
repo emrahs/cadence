@@ -57,7 +57,7 @@ func newNoSQLVisibilityStore(
 	}
 	return &nosqlVisibilityStore{
 		sortByCloseTime: listClosedOrderingByCloseTime,
-		nosqlStore:      shardedStore.GetMetadataShard(),
+		nosqlStore:      shardedStore.GetDefaultShard(),
 	}, nil
 }
 

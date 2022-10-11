@@ -52,7 +52,7 @@ func newNoSQLQueueStore(
 		return nil, err
 	}
 	queue := &nosqlQueueStore{
-		nosqlStore: shardedStore.GetMetadataShard(),
+		nosqlStore: shardedStore.GetDefaultShard(),
 		queueType:  queueType,
 	}
 	if err := queue.createQueueMetadataEntryIfNotExist(); err != nil {
