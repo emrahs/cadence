@@ -80,11 +80,19 @@ func NewConfigStoreClient(clientCfg *csc.ClientConfig, persistenceCfg *config.Pe
 		return nil, fmt.Errorf("persistence cfg default store is not Cassandra")
 	} else if store, ok := persistenceCfg.DataStores[persistenceCfg.DefaultStore]; !ok {
 		return nil, errors.New("persistence cfg datastores missing Cassandra")
-	} else if store.NoSQL == nil {
-		return nil, errors.New("NoSQL struct is nil")
+	} else if store.NoSQL == nil && store.ShardedNoSQL == nil {
+		return nil, errors.New("NoSQL and ShardedNoSQL structs are nil")
 	}
 
-	client, err := newConfigStoreClient(clientCfg, persistenceCfg.DataStores[persistenceCfg.DefaultStore].NoSQL, logger, doneCh)
+	ds := persistenceCfg.DataStores[persistenceCfg.DefaultStore]
+	var dsConfig *config.ShardedNoSQL
+	if ds.ShardedNoSQL != nil {
+		dsConfig = ds.ShardedNoSQL
+	} else {
+		dsConfig = ds.NoSQL.ConvertToShardedNoSQLConfig()
+	}
+
+	client, err := newConfigStoreClient(clientCfg, dsConfig, logger, doneCh)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +103,7 @@ func NewConfigStoreClient(clientCfg *csc.ClientConfig, persistenceCfg *config.Pe
 	return client, nil
 }
 
-func newConfigStoreClient(clientCfg *csc.ClientConfig, persistenceCfg *config.NoSQL, logger log.Logger, doneCh chan struct{}) (*configStoreClient, error) {
+func newConfigStoreClient(clientCfg *csc.ClientConfig, persistenceCfg *config.ShardedNoSQL, logger log.Logger, doneCh chan struct{}) (*configStoreClient, error) {
 	store, err := nosql.NewNoSQLConfigStore(*persistenceCfg, logger, nil)
 	if err != nil {
 		return nil, err
