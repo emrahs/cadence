@@ -563,7 +563,6 @@ func (n *NoSQL) ConvertToShardedNoSQLConfig() *ShardedNoSQL {
 		NoSQLPlugin: n,
 	}
 
-	// TODO: fill this out to make it fully backward compatible
 	return &ShardedNoSQL{
 		DefaultShard: NonShardedStoreName,
 		Connections:  connections,

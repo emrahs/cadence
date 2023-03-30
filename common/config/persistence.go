@@ -93,17 +93,18 @@ func (c *Persistence) Validate() error {
 		if ds.Cassandra != nil && ds.NoSQL != nil && ds.Cassandra != ds.NoSQL {
 			return fmt.Errorf("persistence config: datastore %v: only one of Cassandra or NoSQL can be specified", st)
 		}
-		if ds.SQL == nil && ds.NoSQL == nil && ds.ShardedNoSQL == nil {
-			return fmt.Errorf("persistence config: datastore %v: must provide config for one of SQL, NoSQL or ShardedNoSQL stores", st)
+		configCount := 0
+		if ds.NoSQL != nil {
+			configCount++
 		}
-		if ds.SQL != nil && (ds.NoSQL != nil || ds.ShardedNoSQL != nil) {
-			return fmt.Errorf("persistence config: datastore %v: only one of SQL, NoSQL, or ShardedNoSQL can be specified", st)
+		if ds.ShardedNoSQL != nil {
+			configCount++
 		}
-		if ds.NoSQL != nil && (ds.SQL != nil || ds.ShardedNoSQL != nil) {
-			return fmt.Errorf("persistence config: datastore %v: only one of SQL, NoSQL, or ShardedNoSQL can be specified", st)
+		if ds.SQL != nil {
+			configCount++
 		}
-		if ds.ShardedNoSQL != nil && (ds.SQL != nil || ds.NoSQL != nil) {
-			return fmt.Errorf("persistence config: datastore %v: only one of SQL, NoSQL, or ShardedNoSQL can be specified", st)
+		if configCount != 1 {
+			return fmt.Errorf("persistence config: datastore %v: must provide exactly one type of config, but provided %d", st, configCount)
 		}
 		if ds.SQL != nil {
 			if ds.SQL.UseMultipleDatabases {

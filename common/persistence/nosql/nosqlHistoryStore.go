@@ -22,6 +22,7 @@ package nosql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/uber/cadence/common"
@@ -38,20 +39,6 @@ type (
 		shardedNosqlStore
 	}
 )
-
-/*// NewNoSQLHistoryStoreFromSession returns new HistoryStore
-func NewNoSQLHistoryStoreFromSession(
-	db nosqlplugin.DB,
-	logger log.Logger,
-) p.HistoryStore {
-
-	return &nosqlHistoryStore{
-		nosqlStore: nosqlStore{
-			db:     db,
-			logger: logger,
-		},
-	}
-}*/
 
 // newNoSQLHistoryStore is used to create an instance of HistoryStore implementation
 func newNoSQLHistoryStore(
@@ -391,31 +378,38 @@ func (h *nosqlHistoryStore) GetAllHistoryTreeBranches(
 	ctx context.Context,
 	request *p.GetAllHistoryTreeBranchesRequest,
 ) (*p.GetAllHistoryTreeBranchesResponse, error) {
-	/*	dbBranches, pagingToken, err := h.db.SelectAllHistoryTrees(ctx, request.NextPageToken, request.PageSize)
-		if err != nil {
-			return nil, convertCommonErrors(h.db, "SelectAllHistoryTrees", err)
+
+	if h.shardingPolicy.hasShardedHistory {
+		return nil, &types.InternalServiceError{
+			Message: fmt.Sprintf("SelectAllHistoryTrees is not supported on sharded nosql db"),
 		}
+	}
 
-		branchDetails := make([]p.HistoryBranchDetail, 0, int(request.PageSize))
+	storeShard := h.GetDefaultShard()
+	dbBranches, pagingToken, err := storeShard.db.SelectAllHistoryTrees(ctx, request.NextPageToken, request.PageSize)
+	if err != nil {
+		return nil, convertCommonErrors(storeShard.db, "SelectAllHistoryTrees", err)
+	}
 
-		for _, branch := range dbBranches {
+	branchDetails := make([]p.HistoryBranchDetail, 0, int(request.PageSize))
 
-			branchDetail := p.HistoryBranchDetail{
-				TreeID:   branch.TreeID,
-				BranchID: branch.BranchID,
-				ForkTime: branch.CreateTimestamp,
-				Info:     branch.Info,
-			}
-			branchDetails = append(branchDetails, branchDetail)
+	for _, branch := range dbBranches {
+
+		branchDetail := p.HistoryBranchDetail{
+			TreeID:   branch.TreeID,
+			BranchID: branch.BranchID,
+			ForkTime: branch.CreateTimestamp,
+			Info:     branch.Info,
 		}
+		branchDetails = append(branchDetails, branchDetail)
+	}
 
-		response := &p.GetAllHistoryTreeBranchesResponse{
-			Branches:      branchDetails,
-			NextPageToken: pagingToken,
-		}
+	response := &p.GetAllHistoryTreeBranchesResponse{
+		Branches:      branchDetails,
+		NextPageToken: pagingToken,
+	}
 
-		return response, nil*/
-	panic("Not supported with sharded nosql")
+	return response, nil
 }
 
 // GetHistoryTree returns all branch information of a tree
@@ -425,7 +419,7 @@ func (h *nosqlHistoryStore) GetHistoryTree(
 ) (*p.InternalGetHistoryTreeResponse, error) {
 
 	treeID := request.TreeID
-	storeShard, err := h.GetStoreShardByHistoryShard(*request.ShardID) // TODO: Check if shardID is always available
+	storeShard, err := h.GetStoreShardByHistoryShard(*request.ShardID)
 	if err != nil {
 		return nil, err
 	}

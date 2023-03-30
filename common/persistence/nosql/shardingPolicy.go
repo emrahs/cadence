@@ -23,6 +23,8 @@ package nosql
 import (
 	"fmt"
 
+	"github.com/uber/cadence/common/log/tag"
+
 	"github.com/dgryski/go-farm"
 
 	"github.com/uber/cadence/common/config"
@@ -80,13 +82,13 @@ func (sp *shardingPolicy) parseTaskListShardingPolicy() {
 
 func (sp *shardingPolicy) getHistoryShardName(shardID int) string {
 	if !sp.hasShardedHistory {
-		sp.logger.Info(fmt.Sprintf("Using the default shard (%v) for history shard %v", sp.defaultShard, shardID))
+		sp.logger.Debug("Selected default store shard for history shard", tag.StoreShard(sp.defaultShard), tag.ShardID(shardID))
 		return sp.defaultShard
 	}
 
 	for _, r := range sp.config.ShardingPolicy.HistoryShardMapping {
 		if shardID >= r.Start && shardID <= r.End {
-			sp.logger.Info(fmt.Sprintf("Using the %v shard for history shard %v", r.Shard, shardID))
+			sp.logger.Debug("Selected store shard history shard", tag.StoreShard(r.Shard), tag.ShardID(shardID))
 			return r.Shard
 		}
 	}
@@ -96,7 +98,7 @@ func (sp *shardingPolicy) getHistoryShardName(shardID int) string {
 
 func (sp *shardingPolicy) getTaskListShardName(domainID string, taskListName string, taskType int) string {
 	if !sp.hasShardedTasklist {
-		sp.logger.Info(fmt.Sprintf("Using the default shard (%v) for tasklist %v", sp.defaultShard, taskListName))
+		sp.logger.Debug("Selected default store shard for tasklist", tag.StoreShard(sp.defaultShard), tag.WorkflowTaskListName(taskListName))
 		return sp.defaultShard
 	}
 	tlShards := sp.config.ShardingPolicy.TaskListHashing.ShardOrder
@@ -104,6 +106,6 @@ func (sp *shardingPolicy) getTaskListShardName(domainID string, taskListName str
 	hash := farm.Hash32([]byte(domainID+"_"+taskListName)) % uint32(tlShardCount)
 	shardIndex := int(hash) % tlShardCount
 
-	sp.logger.Info(fmt.Sprintf("Using the %v shard for tasklist %v", tlShards[shardIndex], taskListName))
+	sp.logger.Debug("Selected store shard tasklist", tag.StoreShard(tlShards[shardIndex]), tag.WorkflowTaskListName(taskListName))
 	return tlShards[shardIndex]
 }

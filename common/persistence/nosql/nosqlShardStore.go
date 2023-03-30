@@ -59,23 +59,6 @@ func newNoSQLShardStore(
 	}, nil
 }
 
-/*
-// NewNoSQLShardStoreFromSession is used to create an instance of ShardStore implementation
-// It is being used by some admin toolings
-func NewNoSQLShardStoreFromSession(
-	db nosqlplugin.DB,
-	clusterName string,
-	logger log.Logger,
-) p.ShardStore {
-	return &nosqlShardStore{
-		nosqlStore: nosqlStore{
-			db:     db,
-			logger: logger,
-		},
-		currentClusterName: clusterName,
-	}
-}
-*/
 func (sh *nosqlShardStore) CreateShard(
 	ctx context.Context,
 	request *p.InternalCreateShardRequest,

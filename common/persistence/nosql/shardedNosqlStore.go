@@ -47,12 +47,6 @@ type (
 )
 
 func newShardedNosqlStore(cfg config.ShardedNoSQL, logger log.Logger, dc *p.DynamicConfiguration) (*shardedNosqlStore, error) {
-	//TODO: validate config
-	// - has sharding policy
-	// - has at least one connection
-	// - metadatashard name is valid
-	// - historyShardMapping is valid
-
 	sn := shardedNosqlStore{
 		config: cfg,
 		dc:     dc,
@@ -90,7 +84,6 @@ func (sn *shardedNosqlStore) GetStoreShardByTaskList(domainID string, taskListNa
 }
 
 func (sn *shardedNosqlStore) GetDefaultShard() nosqlStore {
-	// TODO: ensure default shard is set
 	return sn.defaultShard
 }
 
